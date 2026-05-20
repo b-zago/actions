@@ -5,6 +5,9 @@ inputs:
   imageName:
     description: Name of the docker image
     required: true
+  patToken:
+    required: true
+    description: Github PAT token
 
 outputs:
   fullImageName:
@@ -22,7 +25,7 @@ runs:
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
-        password: ${{ github.token }}
+        password: ${{ inputs.patToken }}
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v4

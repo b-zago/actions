@@ -22,6 +22,7 @@ jobs:
         id: buildPush
         with:
           imageName: ${{ inputs.imageName }}
+          patToken: ${{ secrets.patToken }}
 
       - uses: b-zago/actions/k3s-bump@v1
         with:
