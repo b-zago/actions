@@ -1,0 +1,25 @@
+on:
+  workflow_call:
+    inputs:
+      imageName:
+        type: string
+        required: true
+    secrets:
+      patToken:
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: b-zago/actions/build-push-ghcr@v1
+        id: buildPush
+        with:
+          imageName: ${{ inputs.imageName }}
+
+      - uses: b-zago/actions/k3s-bump@v1
+        with:
+          patToken: ${{ secrets.patToken }}
+          fullImageName: ${{ steps.buildPush.outputs.fullImageName }}
+          tag: ${{ steps.buildPush.outputs.tag }}
