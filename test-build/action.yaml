@@ -1,0 +1,17 @@
+name: Test build docker image
+description: Builds docker image without pushing to test if it would even build. Intended to run on pull requests.
+
+inputs:
+  imageName:
+    description: Name of the docker image
+    default: webserver
+
+runs:
+  using: composite
+  steps:
+    - name: Test build the image
+      uses: docker/build-push-action@v7
+      with:
+        load: true
+        push: false
+        tags: ghcr.io/${{ github.repository }}/${{ inputs.imageName }}:test

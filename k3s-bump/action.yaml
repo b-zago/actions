@@ -1,0 +1,52 @@
+name: Bump image tag in k3s-cluster repo
+description: Bumps image tag in b-zago/k3s-cluster repo
+
+inputs:
+  fullImageName:
+    required: true
+    description: Full name of the docker image ex. ghcr.io/b-zago/app/webserver
+  tag:
+    required: true
+    description: Docker image tag to replace current one
+  patToken:
+    required: true
+    description: Github PAT token
+
+runs:
+  using: composite
+
+  steps:
+    - name: Checkout k3s-cluster repo
+      uses: actions/checkout@v6
+      with:
+        repository: b-zago/k3s-cluster
+        token: ${{ inputs.patToken }}
+
+    - name: Bump image tag
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.fullImageName }}
+        TAG: ${{ inputs.tag }}
+        APP_PATH: charts/${{ github.event.repository.name }}
+      run: |
+        if [ "${{ github.ref_name }}" == "main" ]; then
+          VALUES_FILE="values-prod.yaml"
+        else
+          VALUES_FILE="values-staging.yaml"
+        fi
+
+        if [ -f "${APP_PATH}/${VALUES_FILE}" ]; then
+          VALUES_PATH="${APP_PATH}/${VALUES_FILE}"
+        elif [ -f "${APP_PATH}/_${VALUES_FILE}" ]; then
+          VALUES_PATH="${APP_PATH}/_${VALUES_FILE}"
+        else
+          echo "Appropriate values file not found"
+          exit 1
+        fi
+
+        sed -i "s|$IMAGE:.*|$IMAGE:$TAG|g" $VALUES_PATH
+        git config user.email "ci@github.com"
+        git config user.name "GitHub Actions"
+        git add $VALUES_PATH
+        git commit -m "${{ github.event.repository.name }}/${{ github.ref_name }}: update image ${{ env.IMAGE }} to ${{ env.TAG }}"
+        git push
