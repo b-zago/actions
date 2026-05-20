@@ -4,9 +4,6 @@ on:
       imageName:
         type: string
         required: true
-    secrets:
-      patToken:
-        required: true
 
 jobs:
   build:
@@ -14,18 +11,16 @@ jobs:
     permissions:
       contents: read
       packages: write
-      attestations: write
-      id-token: write
     steps:
       - uses: actions/checkout@v6
       - uses: b-zago/actions/build-push-ghcr@v1
         id: buildPush
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           imageName: ${{ inputs.imageName }}
-          patToken: ${{ secrets.patToken }}
 
       - uses: b-zago/actions/k3s-bump@v1
         with:
-          patToken: ${{ secrets.patToken }}
+          patToken: ${{ secrets.PAT_TOKEN }}
           fullImageName: ${{ steps.buildPush.outputs.fullImageName }}
           tag: ${{ steps.buildPush.outputs.tag }}
