@@ -43,5 +43,5 @@ runs:
         push: true
         platforms: linux/amd64,linux/arm64
         tags: |
-          {{ steps.outgen.outputs.fullImageName }}:latest
-          {{ steps.outgen.outputs.fullImageName }}:${{ steps.outgen.outputs.sha }}
+          ${{ steps.outgen.outputs.fullImageName }}:latest
+          ${{ steps.outgen.outputs.fullImageName }}:${{ steps.outgen.outputs.sha }}
