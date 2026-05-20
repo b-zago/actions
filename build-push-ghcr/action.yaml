@@ -1,9 +1,10 @@
-name: Build and push an image to ghcr registry
+name: Build and push an image
+description: Build and push an image to ghcr registry
 
 inputs:
   imageName:
-    default: webserver
     description: Name of the docker image
+    required: true
 
 outputs:
   fullImageName:

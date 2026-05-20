@@ -4,7 +4,7 @@ description: Builds docker image without pushing to test if it would even build.
 inputs:
   imageName:
     description: Name of the docker image
-    default: webserver
+    required: true
 
 runs:
   using: composite
