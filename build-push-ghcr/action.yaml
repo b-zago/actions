@@ -45,6 +45,8 @@ runs:
       with:
         push: true
         platforms: linux/amd64,linux/arm64
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
         tags: |
           ${{ steps.outgen.outputs.fullImageName }}:latest
           ${{ steps.outgen.outputs.fullImageName }}:${{ steps.outgen.outputs.sha }}
