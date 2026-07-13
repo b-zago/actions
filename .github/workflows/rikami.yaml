@@ -114,6 +114,8 @@ jobs:
         run: |
           rm -rf "charts/$APP" && mv "/tmp/$APP" charts/
           if [[ -n $(git status --porcelain) ]]; then
+            git config user.email "ci@github.com"
+            git config user.name "GitHub Actions"
             git add -A
             git commit -m "Generated chart $APP via Rikami"
             git push
