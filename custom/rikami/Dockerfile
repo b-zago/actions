@@ -17,4 +17,4 @@ WORKDIR /app
 
 COPY --from=builder /out/rikami . 
 
-CMD ["./rikami"]
+ENTRYPOINT ["/app/rikami"]
