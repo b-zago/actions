@@ -19,8 +19,36 @@ on:
         description: Name of the image for rikami to update based of tags
 
 jobs:
+  rikami-check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check if rikami.yaml changed
+        id: check
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          CHANGED=$(git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" | grep rikami.yaml)
+
+          if [[ -z "$CHANGED" ]]; then
+            echo "rikami.yaml not changed. Skipping rikami job"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "rikami.yaml changed. Proceeding with chart generation"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
   run-rikami:
     runs-on: ubuntu-latest
+    needs: rikami-check
+    if: needs.rikami-check.outputs.changed == 'true'
     permissions:
       contents: read
       packages: write
