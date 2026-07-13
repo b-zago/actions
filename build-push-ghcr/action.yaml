@@ -33,12 +33,17 @@ runs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
 
-    - name: SHA and outputs generator
+    - name: Bump semver tag
+      id: bump
+      uses: b-zago/actions/semver-bump@v1
+
+    - name: Strip v prefix from tag
       shell: bash
-      id: outgen
+      id: stripped-tag
+      env:
+        TAG: ${{ steps.bump.outputs.new-tag }}
       run: |
-        echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-        echo "fullImageName=ghcr.io/${{ github.repository }}/${{ inputs.imageName }}" >> $GITHUB_OUTPUT
+        echo "tag=${TAG#v}" >> "$GITHUB_OUTPUT"
 
     - name: Build and push
       uses: docker/build-push-action@v7
@@ -48,5 +53,5 @@ runs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         tags: |
-          ${{ steps.outgen.outputs.fullImageName }}:latest
-          ${{ steps.outgen.outputs.fullImageName }}:${{ steps.outgen.outputs.sha }}
+          ghcr.io/${{ github.repository }}/${{ inputs.imageName }}:latest
+          ghcr.io/${{ github.repository }}/${{ inputs.imageName }}:${{ steps.stripped-tag.outputs.tag }}

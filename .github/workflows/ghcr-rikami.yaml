@@ -1,0 +1,41 @@
+on:
+  workflow_call:
+    inputs:
+      base-owner:
+        type: string
+        default: b-zago
+      base-repo:
+        type: string
+        default: rikami-base
+      domain:
+        type: string
+        default: zagoapps.com
+      url:
+        type: string
+        default: https://rikami-api.zagoapps.com
+      image-name:
+        type: string
+        required: true
+        description: Name of the image for rikami to update based of tags
+
+permissions:
+  packages: write
+  contents: read
+
+jobs:
+  build-deploy:
+    uses: b-zago/actions/.github/workflows/build-deploy-ghcr.yaml@v1
+    with:
+      imageName: ${{ inputs.image-name }}
+    secrets: inherit
+
+  rikami:
+    needs: build-deploy
+    uses: b-zago/actions/.github/workflows/rikami.yaml@v1
+    with:
+      base-owner: ${{ inputs.base-owner }}
+      base-repo: ${{ inputs.base-repo }}
+      domain: ${{ inputs.domain }}
+      url: ${{ inputs.url }}
+      image-name: ${{ inputs.image-name }}
+    secrets: inherit

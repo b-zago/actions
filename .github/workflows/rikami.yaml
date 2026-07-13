@@ -1,0 +1,88 @@
+on:
+  workflow_call:
+    inputs:
+      base-owner:
+        type: string
+        default: b-zago
+      base-repo:
+        type: string
+        default: rikami-base
+      domain:
+        type: string
+        default: zagoapps.com
+      url:
+        type: string
+        default: https://rikami-api.zagoapps.com
+      image-name:
+        type: string
+        required: true
+        description: Name of the image for rikami to update based of tags
+
+jobs:
+  run-rikami:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      APP: ${{ github.event.repository.name }}
+      REGION: eu-central-1
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          fetch-tags: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_RIKAMI_ROLE }}
+          aws-region: ${{ env.REGION }}
+
+      - name: Update rikami.yaml image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}/${{ inputs.image-name }}
+        run: |
+          TAG=$(git tag --sort=-v:refname | head -1)
+          TAG="${TAG#v}"
+          sed -i "s|$IMAGE:.*|$IMAGE:$TAG|" rikami.yaml
+          git config user.email "ci@github.com"
+          git config user.name "GitHub Actions"
+          if [[ -n $(git status --porcelain) ]]; then
+            git add -A
+            git commit -m "Updated rikami image to tag $TAG"
+            git push
+          else
+            echo "No changes to commit."
+          fi
+
+      - name: Run Rikami chart generation
+        uses: b-zago/actions/custom/rikami@v1
+        with:
+          base-token: ${{ secrets.RIKAMI_BASE_TOKEN }}
+          base-owner: ${{ inputs.base-owner }}
+          base-repo: ${{ inputs.base-repo }}
+          domain: ${{ inputs.domain }}
+          url: ${{ inputs.url }}
+          app-name: ${{ env.APP }}
+
+      - name: Move generated chart to /tmp
+        run: |
+          mv "$APP" /tmp/
+
+      - name: Checkout k3s-cluster repo
+        uses: actions/checkout@v6
+        with:
+          repository: b-zago/k3s-cluster
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Commit chart application
+        run: |
+          rm -rf "charts/$APP" && mv "/tmp/$APP" charts/
+          if [[ -n $(git status --porcelain) ]]; then
+            git add -A
+            git commit -m "Generated chart $APP via Rikami"
+            git push
+          else
+            echo "No changes to commit."
+          fi

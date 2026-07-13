@@ -1,0 +1,40 @@
+name: Bump semver tag for a repo
+description: It bumps the semver tag according to the commit message. It will bump major if comit message includes [MAJOR], same for [MINOR]. By default it only bumps patch version.
+
+outputs:
+  new-tag:
+    value: ${{ steps.bump.outputs.tag }}
+    description: Newly pushed tag
+
+runs:
+  using: composite
+  steps:
+    - name: Bump tag
+      shell: bash
+      id: bump
+      env:
+        COMMIT_MSG: ${{ github.event.head_commit.message }}
+      run: |
+        git config user.email "ci@github.com"
+        git config user.name "GitHub Actions"
+
+        PREV_TAG=$(git tag --sort=-v:refname | head -1)
+        if [[ -z "$PREV_TAG" ]]; then
+          NEW_TAG="v1.0.0"
+        else
+          IFS='.' read -r major minor patch <<< "${PREV_TAG#v}"
+          if [[ "$COMMIT_MSG" == *"[MAJOR]"* ]]; then
+            major=$((major + 1)); minor=0; patch=0
+          elif [[ "$COMMIT_MSG" == *"[MINOR]"* ]]; then
+            minor=$((minor + 1)); patch=0
+          else
+            patch=$((patch + 1))
+          fi
+          NEW_TAG="v${major}.${minor}.${patch}"
+        fi
+
+        echo "Bumping $PREV_TAG -> $NEW_TAG"
+        git tag "$NEW_TAG"
+        git push origin "$NEW_TAG"
+
+        echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"

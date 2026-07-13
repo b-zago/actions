@@ -1,0 +1,34 @@
+name: Rikami action
+description: Using rikami.yaml file in root of the repo generate a helm chart for rikami helm library
+
+inputs:
+  base-token:
+    description: Token for rikami-base repo for read access only
+    required: true
+  base-owner:
+    description: Owner name of the rikami-base repo
+    required: true
+  base-repo:
+    description: Repo name of the rikami-base
+    required: true
+  domain:
+    description: Domain being used for deployments
+    required: true
+  url:
+    description: URL of the rikami-api
+    required: true
+  app-name:
+    description: Name of the application being deployed (should be repo name)
+    required: true
+
+runs:
+  using: docker
+  image: docker://ghcr.io/b-zago/actions/rikami:v1
+  env:
+    BASE_GH_TOKEN: ${{ inputs.base-token }}
+    BASE_OWNER: ${{ inputs.base-owner }}
+    BASE_REPO: ${{ inputs.base-repo }}
+    DOMAIN: ${{ inputs.domain }}
+    URL: ${{ inputs.url }}
+    APP_NAME: ${{ inputs.app-name }}
+    REPO_NAME: ${{ inputs.app-name }}

@@ -1,0 +1,184 @@
+name: Build Custom GitHub Actions
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  list_dirs:
+    runs-on: ubuntu-latest
+    outputs:
+      dirs: ${{ steps.dirs.outputs.result }}
+      follow_tag: ${{ steps.follow_tag.outputs.tag }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Get a list of changed directories
+        id: dirs
+        env:
+          CONTEXT: custom
+          IGNORED: action.yaml
+        run: |
+          PREV_TAG=$(git tag --sort=-v:refname | head -2 | tail -1)
+          if [[ -z "$PREV_TAG" ]]; then
+            echo "No previous tag found, skipping."
+            echo "result=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CHANGED_FILES=$(git diff --name-only "$PREV_TAG" "${{ github.ref_name }}")
+
+          declare -A seen
+          apps=()
+          for FILE in $CHANGED_FILES; do
+            if [[ "$FILE" == "$CONTEXT"/* && "$FILE" != */"$IGNORED" ]]; then
+              app="${FILE#$CONTEXT/}"
+              app="${app%%/*}"
+              if [[ -z "${seen[$app]}" ]]; then
+                seen[$app]=1
+                apps+=("$CONTEXT/$app/")
+              fi
+            fi
+          done
+
+          if [[ ${#apps[@]} -eq 0 ]]; then
+            RESULT="[]"
+          else
+            RESULT=$(printf '%s\n' "${apps[@]}" | jq -R . | jq -cs .)
+          fi
+          echo "result=$RESULT" >> "$GITHUB_OUTPUT"
+
+      - name: Extract major following tag
+        id: follow_tag
+        env:
+          GIT_TAG: ${{ github.ref_name }}
+        run: |
+          echo "tag=${GIT_TAG%%.*}" >> "$GITHUB_OUTPUT"
+
+  build_actions:
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest
+    needs: list_dirs
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: ${{ fromJSON(needs.list_dirs.outputs.dirs) }}
+    env:
+      FOLLOW_TAG: ${{ needs.list_dirs.outputs.follow_tag }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Extract action name
+        id: name
+        env:
+          DIR: ${{ matrix.dir }}
+          CONTEXT: custom
+        run: |
+          n="${DIR#$CONTEXT/}"
+          n="${n%/}"
+          echo "name=$n" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.dir }}
+          push: true
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            ghcr.io/${{ github.repository }}/${{ steps.name.outputs.name }}:${{ env.FOLLOW_TAG }}
+            ghcr.io/${{ github.repository }}/${{ steps.name.outputs.name }}:${{ github.ref_name }}
+
+      - name: Create artifact
+        if: success()
+        run: echo "${{ matrix.dir }}" > result-${{ steps.name.outputs.name }}.txt
+
+      - name: Upload result
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ steps.name.outputs.name }}
+          path: result-${{ steps.name.outputs.name }}.txt
+
+  commit:
+    permissions:
+      contents: write
+    needs: [build_actions, list_dirs]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    env:
+      FOLLOW_TAG: ${{ needs.list_dirs.outputs.follow_tag }}
+      GIT_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: result-*
+          path: results/
+          merge-multiple: true
+
+      - name: Bump image tags in actions
+        env:
+          GIT_REPO: ${{ github.repository }}
+        run: |
+          declare -A PATHS
+          mapfile -t RESULTS < <(find results -name '*.txt')
+
+          if [[ "${#RESULTS[@]}" -eq 0 ]]; then
+            echo "Results empty, skipping action image tag bump"
+            exit 0
+          fi
+
+          for RESULT in "${RESULTS[@]}"; do
+            n="${RESULT##*/result-}"
+            n="${n%.txt}"
+            p=$(cat "$RESULT")
+            p="${p%/}"
+            PATHS[$n]="$p/action.yaml"
+          done
+
+          for NAME in "${!PATHS[@]}"; do
+            sed -i "s|image: ghcr.io/$GIT_REPO/$NAME:.*|image: ghcr.io/$GIT_REPO/$NAME:$GIT_TAG|" "${PATHS[$NAME]}"
+          done
+
+          rm -rf results/
+
+      - name: Update and push tags
+        run: |
+          git config user.email "ci@github.com"
+          git config user.name "GitHub Actions"
+
+          if [[ -n $(git status --porcelain) ]]; then
+            git add -A
+            git commit -m "Bumped actions image tags"
+            git push
+          else
+            echo "No changes to commit."
+          fi
+
+          git tag -f "$GIT_TAG"
+          git tag -f "$FOLLOW_TAG"
+          git push origin --force "$GIT_TAG" "$FOLLOW_TAG"
