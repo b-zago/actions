@@ -11,6 +11,9 @@ inputs:
   patToken:
     required: true
     description: Github PAT token
+  ignoreMissing:
+    default: "false"
+    description: Should missing values files be ignored. Will exit with code 0 if true
 
 runs:
   using: composite
@@ -28,6 +31,7 @@ runs:
         IMAGE: ${{ inputs.fullImageName }}
         TAG: ${{ inputs.tag }}
         APP_PATH: charts/${{ github.event.repository.name }}
+        IGNORE_MISSING: ${{ inputs.ignoreMissing }}
       run: |
         if [ "${{ github.ref_name }}" == "main" ]; then
           VALUES_FILE="values-prod.yaml"
@@ -41,6 +45,10 @@ runs:
           VALUES_PATH="${APP_PATH}/_${VALUES_FILE}"
         else
           echo "Appropriate values file not found"
+          if [[ "$IGNORE_MISSING" == "true" ]]; then
+            echo "Skipping bump step"
+            exit 0
+          fi
           exit 1
         fi
 

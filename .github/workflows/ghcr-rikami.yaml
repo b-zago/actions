@@ -20,13 +20,14 @@ on:
 
 permissions:
   packages: write
-  contents: read
+  contents: write
 
 jobs:
   build-deploy:
     uses: b-zago/actions/.github/workflows/build-deploy-ghcr.yaml@v1
     with:
       imageName: ${{ inputs.image-name }}
+      ignoreMissing: "true"
     secrets: inherit
 
   rikami:

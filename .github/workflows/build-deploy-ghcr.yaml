@@ -4,6 +4,10 @@ on:
       imageName:
         type: string
         required: true
+      ignoreMissing:
+        type: string
+        default: "false"
+        description: Should missing values files be ignored on k3s-bump. Will exit with code 0 if 'true'
 
 jobs:
   build:
@@ -27,3 +31,4 @@ jobs:
           patToken: ${{ secrets.PAT_TOKEN }}
           fullImageName: ${{ steps.buildPush.outputs.fullImageName }}
           tag: ${{ steps.buildPush.outputs.tag }}
+          ignoreMissing: ${{ inputs.ignoreMissing }}
