@@ -7,7 +7,7 @@ inputs:
     required: true
   token:
     required: true
-    description: PAT Token
+    description: PAT/GITHUB Token
 
 outputs:
   fullImageName:
@@ -36,6 +36,8 @@ runs:
     - name: Bump semver tag
       id: bump
       uses: b-zago/actions/semver-bump@v1
+      with:
+        token: ${{ inputs.token }}
 
     - name: Strip v prefix from tag
       shell: bash
