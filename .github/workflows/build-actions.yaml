@@ -161,7 +161,7 @@ jobs:
           done
 
           for NAME in "${!PATHS[@]}"; do
-            sed -i "s|image: ghcr.io/$GIT_REPO/$NAME:.*|image: ghcr.io/$GIT_REPO/$NAME:$GIT_TAG|" "${PATHS[$NAME]}"
+            sed -i "s|image: docker://ghcr.io/$GIT_REPO/$NAME:.*|image: docker://ghcr.io/$GIT_REPO/$NAME:$GIT_TAG|" "${PATHS[$NAME]}"
           done
 
           rm -rf results/
