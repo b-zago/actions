@@ -50,8 +50,9 @@ jobs:
     needs: rikami-check
     if: needs.rikami-check.outputs.changed == 'true'
     permissions:
-      contents: read
+      contents: write
       packages: write
+      id-token: write
     env:
       APP: ${{ github.event.repository.name }}
       REGION: eu-central-1
