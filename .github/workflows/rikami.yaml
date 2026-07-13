@@ -95,6 +95,9 @@ jobs:
           url: ${{ inputs.url }}
           app-name: ${{ env.APP }}
 
+      - name: Set ownership of generated files
+        run: sudo chown -R "$(id -u):$(id -g)" "$APP"
+
       - name: Move generated chart to /tmp
         run: |
           mv "$APP" /tmp/
