@@ -23,7 +23,7 @@ inputs:
 
 runs:
   using: docker
-  image: docker://ghcr.io/b-zago/actions/rikami:v1.1.7
+  image: docker://ghcr.io/b-zago/actions/rikami:v1.1.11
   env:
     BASE_GH_TOKEN: ${{ inputs.base-token }}
     BASE_OWNER: ${{ inputs.base-owner }}
