@@ -20,13 +20,15 @@ runs:
       env:
         COMMIT_MSG: ${{ github.event.head_commit.message }}
         GITHUB_TOKEN: ${{ inputs.token }}
+        BRANCH: ${{ github.ref_name }}
       run: |
         git config user.email "ci@github.com"
         git config user.name "GitHub Actions"
 
         git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
 
-        PREV_TAG=$(git tag --sort=-v:refname | head -1)
+        # CHANGE 1: only look at plain vX.Y.Z tags, ignore -staging ones
+        PREV_TAG=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
 
         if [[ -z "$PREV_TAG" ]]; then
           NEW_TAG="v1.0.0"
@@ -40,6 +42,11 @@ runs:
             patch=$((patch + 1))
           fi
           NEW_TAG="v${major}.${minor}.${patch}"
+        fi
+
+        # CHANGE 2: add suffix if not on main
+        if [[ "$BRANCH" != "main" ]]; then
+          NEW_TAG="${NEW_TAG}-${BRANCH}.${{ github.run_number }}"
         fi
 
         echo "Bumping $PREV_TAG -> $NEW_TAG"
