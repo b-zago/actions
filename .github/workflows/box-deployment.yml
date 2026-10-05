@@ -49,7 +49,7 @@ jobs:
           BUMP_PATH="$ENVS_PATH/$ENV_TO_BUMP/workloads/$APP/kustomization.yaml"
 
           if [ ! -f "$BUMP_PATH" ]; then
-            echo "Appropriate values file not found"
+            echo "Appropriate kustomization file not found"
             echo "Skipping bump step"
             exit 0
           fi
