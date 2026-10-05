@@ -10,12 +10,9 @@ inputs:
     description: PAT/GITHUB Token
 
 outputs:
-  fullImageName:
-    description: Full name of the docker image ex. ghcr.io/b-zago/app/webserver
-    value: ${{ steps.outgen.outputs.fullImageName }}
   tag:
     description: Docker image tag to replace current one
-    value: ${{ steps.outgen.outputs.sha }}
+    value: ${{ steps.stripped-tag.outputs.tag }}
 
 runs:
   using: composite

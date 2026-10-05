@@ -22,7 +22,7 @@ jobs:
         id: dirs
         env:
           CONTEXT: custom
-          IGNORED: action.yaml
+          IGNORED: action.yml
         run: |
           PREV_TAG=$(git tag --sort=-v:refname | head -2 | tail -1)
           if [[ -z "$PREV_TAG" ]]; then
@@ -157,7 +157,7 @@ jobs:
             n="${n%.txt}"
             p=$(cat "$RESULT")
             p="${p%/}"
-            PATHS[$n]="$p/action.yaml"
+            PATHS[$n]="$p/action.yml"
           done
 
           for NAME in "${!PATHS[@]}"; do

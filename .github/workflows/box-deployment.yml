@@ -1,0 +1,62 @@
+on:
+  workflow_call:
+    inputs:
+      imageName:
+        description: Name of the docker image
+        type: string
+        default: ${{ github.event.repository.name }}
+      patToken:
+        description: PAT Token for cheking out box repo
+        type: string
+        required: true
+jobs:
+  buildDeploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-tags: true
+
+      - uses: b-zago/actions/build-push-ghcr@v1
+        id: buildPush
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          imageName: ${{ inputs.imageName }}
+
+      - name: Checkout box repo
+        uses: actions/checkout@v6
+        with:
+          repository: b-zago/box
+          token: ${{ inputs.patToken }}
+
+      - name: Bump image tag
+        shell: bash
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}/${{ inputs.imageName }}
+          TAG: ${{ steps.buildPush.outputs.tag }}
+          ENVS_PATH: k3s/overlays
+          APP: ${{ github.event.repository.name }}
+        run: |
+          if [ "${{ github.ref_name }}" == "main" ]; then
+            ENV_TO_BUMP="prod"
+          else
+            ENV_TO_BUMP="${{ github.ref_name }}"
+          fi
+
+          BUMP_PATH="$ENVS_PATH/$ENV_TO_BUMP/workloads/$APP/kustomization.yaml"
+
+          if [ ! -f "$BUMP_PATH" ]; then
+            echo "Appropriate values file not found"
+            echo "Skipping bump step"
+            exit 0
+          fi
+
+          sed -i "s|$IMAGE:.*|$IMAGE:$TAG|g" $BUMP_PATH
+          git config user.email "ci@github.com"
+          git config user.name "GitHub Actions"
+          git add $BUMP_PATH
+          git commit -m "${{ github.event.repository.name }}/${{ github.ref_name }}: update image $IMAGE to $TAG"
+          git push
