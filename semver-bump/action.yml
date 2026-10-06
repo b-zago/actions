@@ -27,8 +27,11 @@ runs:
 
         git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
 
-        # CHANGE 1: only look at plain vX.Y.Z tags, ignore -staging ones
-        PREV_TAG=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+        # make sure tags exist locally (checkout is shallow and tagless by default)
+        git fetch --tags --force --quiet
+
+        # only look at plain vX.Y.Z tags; "|| true" so no matches doesn't kill the script
+        PREV_TAG=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
 
         if [[ -z "$PREV_TAG" ]]; then
           NEW_TAG="v1.0.0"
